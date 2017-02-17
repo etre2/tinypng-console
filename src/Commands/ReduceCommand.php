@@ -14,6 +14,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Finder\Finder;
 use Tinify\Exception as TinifyException;
 use TinyPNG\Console\Helpers\DataHelper;
 
@@ -21,6 +22,7 @@ class ReduceCommand extends Command
 {
     /** @var string $apiKey */
     protected $apiKey;
+    protected $allowed_extensions = ['png', 'jpg', 'jpeg'];
 
     public function __construct($name = null)
     {
@@ -38,7 +40,8 @@ class ReduceCommand extends Command
         $this
             ->setName('reduce')
             ->setDescription('"Optimize your images with a perfect balance in quality and file size." - TinyPNG')
-            ->addArgument('fileName', InputArgument::REQUIRED, "Path to file needing optimization")
+            ->addArgument('fileName', InputArgument::REQUIRED, "Path to file needing optimization <comment>[accepts globs, strings, or regexes]</comment>")
+            ->addOption('recursive-depth','d', InputOption::VALUE_OPTIONAL, "How many subdirectory levels should this command search for your file?",0)
             ->addOption('api-key', 'k', InputOption::VALUE_OPTIONAL, "API Key");
     }
 
@@ -52,8 +55,11 @@ class ReduceCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->setRuntimeApiKey($input);
-        $sourceImage = \Tinify\fromFile($input->getArgument('fileName'));
-        $sourceImage->toFile($input->getArgument('fileName'));
+
+        $output->writeln(sprintf("<info>Searching for files with name like `%s` in %s</info>", $input->getArgument('fileName'), getcwd()));
+        $fileSearch = $this->getTargetImages($input);
+        $this->compressFiles($input, $output, $fileSearch);
+        $output->writeln(["","<info>Done!</info>",""]);
     }
 
     /**
@@ -65,8 +71,8 @@ class ReduceCommand extends Command
         try {
             \Tinify\setKey($this->apiKey);
             \Tinify\validate();
-        } catch(TinifyException $e) {
-            throw new RuntimeException(sprintf('TinyPNG Error: %s',$e->getMessage()));
+        } catch (TinifyException $e) {
+            throw new RuntimeException(sprintf('TinyPNG Error: %s', $e->getMessage()));
         }
     }
 
@@ -93,5 +99,41 @@ class ReduceCommand extends Command
     {
         $this->apiKey = $apiKey;
         return $this;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @return Finder
+     */
+    protected function getTargetImages(InputInterface $input): Finder
+    {
+        $fileSearch = new Finder();
+        $fileSearch->files()
+            ->name($input->getArgument("fileName"))
+            ->in(getcwd())
+            ->depth("<={$input->getOption('recursive-depth')}");
+        return $fileSearch;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @param $fileSearch
+     */
+    protected function compressFiles(InputInterface $input, OutputInterface $output, Finder $fileSearch)
+    {
+        if ($fileSearch->count() > 0):
+            foreach ($fileSearch as $fileResult):
+                $isAllowedImageType = in_array($fileResult->getExtension(), $this->allowed_extensions, false);
+                if (!$isAllowedImageType):
+                    continue;
+                endif;
+                $output->writeln(sprintf(" - <comment>Loading `%s`</comment>", $fileResult->getRealPath()));
+                $sourceImage = \Tinify\fromFile($fileResult->getRealPath());
+                $output->writeln(sprintf(" - <comment>Compressing `%s`</comment>", $fileResult->getRealPath()));
+                $sourceImage->toFile($fileResult->getRealPath());
+                $output->writeln(sprintf("     <info>Completed: `%s`</info>", $fileResult->getRealPath()));
+            endforeach;
+        endif;
     }
 }
