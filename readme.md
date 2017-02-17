@@ -1,4 +1,4 @@
-Allows TinyPNG features to be executed from the command line.
+Allows TinyPNG to be executed from the command line for lossless image compression.
 
 **Install**
 
