@@ -19,9 +19,9 @@
         "egulias/email-validator": "^2.1",
         "soundasleep/html2text": "^0.3.4",
         "tinify/tinify": "^1.5",
-        "symfony/finder": "^3.2",
-        "symfony/filesystem": "^3.2",
-        "symfony/yaml": "^3.2"
+        "symfony/finder": "~2.3|~3.0",
+        "symfony/filesystem": "~2.3|~3.0",
+        "symfony/yaml": "~2.3|~3.0"
     },
     "autoload": {
         "psr-4": {
