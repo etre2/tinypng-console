@@ -1,0 +1,35 @@
+{
+    "name": "etre2/tinypng-console",
+    "description": "Symfony Console interface to losslessly compress PNG files",
+    "keywords": ["tinypng","console"],
+    "minimum-stability": "dev",
+    "preferred-stability": "stable",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tyler Mills",
+            "email": "tylerssn@gmail.com"
+        }
+    ],
+    "require": {
+        "guzzlehttp/guzzle": "~4.0|~5.0|~6.0",
+        "symfony/console": "~2.3|~3.0",
+        "symfony/process": "~2.3|~3.0",
+        "respect/validation": "^1.1",
+        "egulias/email-validator": "^2.1",
+        "soundasleep/html2text": "^0.3.4",
+        "tinify/tinify": "^1.5",
+        "symfony/finder": "^3.2",
+        "symfony/filesystem": "^3.2",
+        "symfony/yaml": "^3.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "TinyPNG\\Console\\": "src/",
+            "TinyPNG\\ConsolePlugin\\": "plugins/"
+        }
+    },
+    "bin": [
+        "tinypng"
+    ]
+}
