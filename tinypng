@@ -2,7 +2,7 @@
 <?php
 
 use Symfony\Component\Console\Application;
-use TinyPNG\Console\Commands\ApiKey\GenerateCommand;
+use TinyPNG\Console\Commands\ApiKey\RequestCommand;
 use TinyPNG\Console\Commands\ApiKey\ConfigureCommand;
 use TinyPNG\Console\Commands\ReduceCommand;
 
@@ -11,8 +11,8 @@ if (file_exists(__DIR__.'/../../autoload.php')) {
 } else {
     require __DIR__.'/vendor/autoload.php';
 }
-$app = new Application('TinyPNG Console', '1.0.2');
+$app = new Application('TinyPNG Console', '1.0.3');
 $app->add(new ReduceCommand());
 $app->add(new ConfigureCommand());
-$app->add(new GenerateCommand());
+$app->add(new RequestCommand());
 $app->run();
