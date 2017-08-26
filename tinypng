@@ -11,7 +11,7 @@ if (file_exists(__DIR__.'/../../autoload.php')) {
 } else {
     require __DIR__.'/vendor/autoload.php';
 }
-$app = new Application('TinyPNG Console', '1.0.1');
+$app = new Application('TinyPNG Console', '1.0.2');
 $app->add(new ReduceCommand());
 $app->add(new ConfigureCommand());
 $app->add(new GenerateCommand());
