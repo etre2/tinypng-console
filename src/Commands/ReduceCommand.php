@@ -155,16 +155,17 @@ class ReduceCommand extends Command
 
                 $sourceImage->toFile($savePath);
 
+                $compressedSize = $sourceImage->result()->size();
+                $bytesSaved = $fileResult->getSize() - $compressedSize;
+
                 if ($this->isMoveRequest($input) && $fileResult->getRealPath() !== $savePath) {
                     $originalPath = $fileResult->getRealPath();
+                    /** After deleting the file, $fileResult is destroyed and cannot be referenced */
                     unlink($originalPath);
                     $additionalOutput = "     Moved from: {$originalPath}";
                 } elseif ($this->isMoveRequest($input)) {
                     $additionalOutput = "     Filename was already SEO friendly.";
                 }
-
-                $compressedSize = $sourceImage->result()->size();
-                $bytesSaved = $fileResult->getSize() - $compressedSize;
 
                 $output->writeln([
                     sprintf("     <info>Saved to: `%s`</info> (%s MB | %s KB saved)", $savePath, $this->bytesToMb($compressedSize), $this->bytesToKb($bytesSaved)),
