@@ -41,7 +41,9 @@ class ReduceCommand extends Command
             ->setName('reduce')
             ->setDescription('"Optimize your images with a perfect balance in quality and file size." - TinyPNG')
             ->addArgument('fileName', InputArgument::REQUIRED, "Path to file needing optimization <comment>[accepts globs, strings, or regexes]</comment>")
-            ->addOption('recursive-depth','d', InputOption::VALUE_OPTIONAL, "How many subdirectory levels should this command search for your file?",0)
+            ->addOption('recursive-depth', 'd', InputOption::VALUE_OPTIONAL, "How many subdirectory levels should this command search for your file?", 0)
+            ->addOption('seo', 's', InputOption::VALUE_OPTIONAL, "Replace spaces in filename with hyphens.", 0)
+            ->addOption('move', 'm', InputOption::VALUE_OPTIONAL, "Move file to new name. Considered if '--seo=1'", 0)
             ->addOption('api-key', 'k', InputOption::VALUE_OPTIONAL, "API Key");
     }
 
@@ -59,7 +61,7 @@ class ReduceCommand extends Command
         $output->writeln(sprintf("<info>Searching for files with name like `%s` in %s</info>", $input->getArgument('fileName'), getcwd()));
         $fileSearch = $this->getTargetImages($input);
         $this->compressFiles($input, $output, $fileSearch);
-        $output->writeln(["","<info>Done!</info>",""]);
+        $output->writeln(["", "<info>Done!</info>", ""]);
     }
 
     /**
@@ -122,18 +124,110 @@ class ReduceCommand extends Command
      */
     protected function compressFiles(InputInterface $input, OutputInterface $output, Finder $fileSearch)
     {
+        $additionalOutput = "";
         if ($fileSearch->count() > 0):
             foreach ($fileSearch as $fileResult):
                 $isAllowedImageType = in_array($fileResult->getExtension(), $this->allowed_extensions, false);
                 if (!$isAllowedImageType):
                     continue;
                 endif;
-                $output->writeln(sprintf(" - <comment>Loading `%s`</comment>", $fileResult->getRealPath()));
-                $sourceImage = \Tinify\fromFile($fileResult->getRealPath());
+                if ($this->noRequestMove($input, $fileResult)) {
+                    $output->writeln("Cannot write to file. Skipping {$fileResult->getFilename()}");
+                    continue;
+                }
+                $savePath = $fileResult->getRealPath();
+                if ($input->getOption('seo') == 1) {
+                    $fileName = $this->strToSeo($fileResult->getFilename());
+                    $savePath = $fileResult->getPath() . DIRECTORY_SEPARATOR . $fileName;
+                }
+
+                $output->writeln([
+                    '',
+                    sprintf(" - <comment>Uploading to TinyPNG: `%s` (%s MB)</comment>",
+                        $fileResult->getRealPath(),
+                        $this->bytesToMb($fileResult->getSize())
+                    )
+                ]);
+
+                $sourceImage = $this->uploadImage($fileResult);
+
                 $output->writeln(sprintf(" - <comment>Compressing `%s`</comment>", $fileResult->getRealPath()));
-                $sourceImage->toFile($fileResult->getRealPath());
-                $output->writeln(sprintf("     <info>Completed: `%s`</info>", $fileResult->getRealPath()));
+
+                $sourceImage->toFile($savePath);
+
+                if ($this->isMoveRequest($input) && $fileResult->getRealPath() !== $savePath) {
+                    $originalPath = $fileResult->getRealPath();
+                    unlink($originalPath);
+                    $additionalOutput = "     Moved from: {$originalPath}";
+                } elseif ($this->isMoveRequest($input)) {
+                    $additionalOutput = "     Filename was already SEO friendly.";
+                }
+
+                $compressedSize = $sourceImage->result()->size();
+                $bytesSaved = $fileResult->getSize() - $compressedSize;
+
+                $output->writeln([
+                    sprintf("     <info>Saved to: `%s`</info> (%s MB | %s KB saved)", $savePath, $this->bytesToMb($compressedSize), $this->bytesToKb($bytesSaved)),
+                    $additionalOutput
+                ]);
             endforeach;
         endif;
+    }
+
+    /**
+     * @param $string
+     * @return string
+     */
+    protected function strToSeo($string): string
+    {
+        return (string)preg_replace('/\s+/', '-', $string);
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param $fileResult
+     * @return bool
+     */
+    protected function noRequestMove(InputInterface $input, $fileResult): bool
+    {
+        return $input->getOption('move') == 1 && !$fileResult->isWritable();
+    }
+
+    /**
+     * @param InputInterface $input
+     * @return bool
+     */
+    protected function isMoveRequest(InputInterface $input): bool
+    {
+        return $input->getOption('move') == 1;
+    }
+
+    /**
+     * @param $bytes
+     * @return float
+     */
+    protected function bytesToMb(int $bytes = 0, int $decimals = 3): float
+    {
+        $size = $bytes / 1024 / 1024;
+
+        return number_format($size, $decimals);
+    }
+
+    /**
+     * @param $fileResult
+     * @return \Tinify\Source
+     */
+    protected function uploadImage($fileResult): \Tinify\Source
+    {
+        return \Tinify\fromFile($fileResult->getRealPath());
+    }
+
+    /**
+     * @param $bytesSaved
+     * @return float|int
+     */
+    protected function bytesToKb(int $bytesSaved = 0, int $decimals = 3)
+    {
+        return number_format($bytesSaved / 1024, $decimals);
     }
 }
